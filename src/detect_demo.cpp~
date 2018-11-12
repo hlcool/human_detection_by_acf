@@ -1,0 +1,61 @@
+#include "ACFDetector.h"
+#include <opencv2/opencv.hpp>
+
+int main(int argc, char** argv)
+{
+	if(argc != 2)
+	{
+		std::cout<<"number of arguments is not right..."<<std::endl;
+		return -1;
+	}
+	
+	ACFDetector acfDetector;
+	acfDetector.loadModel(argv[1]);
+	
+	cv::VideoCapture cap(1);
+	if(!cap.isOpened())
+    {
+        std::cout<<"load camera error..."<<std::endl;
+        return -1;
+    }
+
+	cv::Mat frameBGR, frameRGB; 
+	std::vector<OBJECT> cups;
+	for(;;)
+	{
+		cap >> frameBGR;
+		if(!frameBGR.data)
+		{
+			std::cout<<"load image error..."<<std::endl;
+        	return -1;
+		}
+		//imshow("SRC",frameBGR);
+		cv::cvtColor(frameBGR, frameRGB, CV_BGR2RGB);
+		cups.clear();
+		double start = cv::getTickCount();
+		cups = acfDetector.applyDetector(frameRGB);
+		double time  = (cv::getTickCount()-start)/cv::getTickFrequency()*1000;
+		std::cout<<"Time: "<<time<<"ms"<<std::endl;
+		
+		for (int d = 0; d < cups.size(); d++)
+		{
+			int x = cups[d].x;
+			int y = cups[d].y;
+			int width = cups[d].width;
+			int height = cups[d].height;
+			float score = cups[d].score;
+
+			cv::Rect myROI(x, y, width, height);
+			cv::rectangle(frameBGR, myROI, cv::Scalar(0, 0, 255), 2);
+			std::cout << "x=" << x << " y=" << y << " width=" << cups[d].width << " height=" << cups[d].height << " Score=" << score << std::endl;
+		}
+		cv::imshow("Detection", frameBGR);
+		if(cv::waitKey(10)>=0)
+        {
+            break;
+        }
+	}
+	
+	return 0;
+}
+
